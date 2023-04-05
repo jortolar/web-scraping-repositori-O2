@@ -6,14 +6,15 @@ poke_domain = "https://www.pokemon.com"
 url = "https://www.pokemon.com/es/pokedex/"
 img_url = "https://assets.pokemon.com/assets/cms2/img/pokedex/full/{}.png"
 
-# 1. Get the HTML Source File.
+# 1. Obtener el fichero HTML de la Pokédex
 
 r = requests.get(url)
 soup = BeautifulSoup(r.content, 'html.parser')
 
-# 2. Extract the data and append it to a list.
+
 pokedex = []
 
+# 2. Obtener todos los pokemons con su id, su nombre y la URL de sus características 
 for sec in soup.find_all('li'):
     for link in sec.find_all('a'):
         if 'href' in link.attrs.keys():
@@ -28,8 +29,10 @@ for sec in soup.find_all('li'):
                 })
 
 
- # 3. Get the HTML file from each pokemon.
+
 aug_pokedex = []
+
+# 3. obtener el fichero HTML de cada pokemon y extraer las características de cada uno
 for row in pokedex:
     
     poke_url = poke_domain + row['ref']
@@ -39,20 +42,10 @@ for row in pokedex:
     r = requests.get(poke_url)
     soup = BeautifulSoup(r.content, 'html.parser')
 
-
-    for section in soup.find_all('div', class_="pokemon-stats-info active"):
-        for attribute in section.find_all('li'):
-            if (attribute["class"] == ['meter']):
-                print(attribute['data-value'])
-                print(attribute.text)  
-
-
-    exit()
-
-    # 2. Extract attributes.
     type_list = []
     weakness_list = []
 
+    # tipo y debilidad
     for section in soup.find_all('div', class_="pokedex-pokemon-attributes active"):
         for link in section.find_all('a'):
             if re.search(r'/pokedex/\?type=', link['href']):
@@ -63,6 +56,8 @@ for row in pokedex:
 
     attr = ''
     val = ''
+
+    # Atributos - Altura, peso, categoría, 
     for section in soup.find_all('div', class_="pokemon-ability-info color-bg color-lightblue match active"):
         for attribute in section.find_all('span'):
             
@@ -84,6 +79,36 @@ for row in pokedex:
                 attr = ''
                 val = ''
 
+    #Puntos de Base
+    for section in soup.find_all('div', class_="pokemon-stats-info active"):
+        for lista in section.find_all('li'):
+
+            aux = lista.text.strip()
+            if (aux != ''):   
+                txt = aux
+
+            if ('data-value' in lista.attrs):
+                val = lista['data-value']
+            
+            if (txt != '' and val != ''):              
+                match txt:
+                    case "PS":
+                        ps = val
+                    case "Ataque":
+                        ataque = val
+                    case "Defensa":
+                        defensa = val
+                    case "Ataque Especial":
+                        ataque_esp = val    
+                    case "Defensa Especial":
+                        defensa_esp = val  
+                    case "Velocidad":
+                        velocidad = val
+                      
+                txt = ''
+                val = ''
+           
+
     old_img_name = "{0:0=3d}".format(int(row['number']))
     from_url = img_url.format(old_img_name)
 
@@ -97,25 +122,21 @@ for row in pokedex:
         'altura':altura,
         'peso':peso,
         'habilidad':habilidad,
+        'ps': ps,
+        'ataque': ataque,
+        'defensa': defensa,
+        'ataque_esp': ataque_esp,
+        'defensa_esp': defensa_esp,
+        'velocidad': velocidad,
         'image_url': from_url
        
     })
 
     print (list(aug_pokedex))
 
+    exit()
 
 
-exit()
-aug_pokedex = pd.DataFrame(aug_pokedex)
+# 4. Crear un fichero csa con el dataset.
 
-
-
-
-exit()
-
-# 3. Generate a dataframe.
-pokedex = pd.DataFrame(pokedex)[['number', 'name', 'ref']].copy()
-
-# 4. Download the file as csv.
-pokedex.to_csv(self.csv_file, index=False)
 
