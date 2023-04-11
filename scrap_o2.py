@@ -80,10 +80,11 @@ def get_items(community: dict) -> list:
     result = list()
     if table is not None:
         urls_raw = table.find_all('a')
-        for url in urls_raw:
-            if 'handle' in url.get('href'):
+        for url_raw in urls_raw:
+            item_url = BASE_URL + url_raw.get('href')
+            if 'handle' in item_url:
                 time.sleep(WAITING_TIME_BEFORE_ITEM_SCRAP)
-                result.append(get_item(BASE_URL + url.get('href')))
+                result.append(get_item(item_url))
     return result
 
 
@@ -121,8 +122,8 @@ def get_item(url: str) -> dict:
     # Item stats
     # ToDo: implementar al get_item_statistics l'obtenció d'estadístiques de l'item
     item_stats_raw = soup.find('a', class_='statisticsLink btn btn-info')
-    stats_url = BASE_URL + item_stats_raw.get('href')
-    item['statistics'] = get_item_statistics(stats_url)
+    item_stats_url = BASE_URL + item_stats_raw.get('href')
+    item['statistics'] = get_item_statistics(item_stats_url)
 
     get_item.counter += 1
     print(f'\n>> item {get_item.counter}\n{item}')
