@@ -2,23 +2,37 @@ import builtwith
 from whois import whois
 import requests
 from bs4 import BeautifulSoup
+import time
 
-base_url = 'https://openaccess.uoc.edu'
-language = '?locale=ca'  # There are only 3 language options: ca, es, en
+
+'''
+URLs d'interès del repositori O2 de la UOC:
+    https://openaccess.uoc.edu/robots.txt
+    https://openaccess.uoc.edu/sitemap
+    https://openaccess.uoc.edu/pdf-sitemap.xml
+'''
+
+BASE_URL = 'https://openaccess.uoc.edu'
+LANGUAGE = '?locale=ca'  # there are only 3 language options: ca, es, en
+USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36'
+WAITING_TIME_BEFORE_ITEM_SCRAP = 0  # in seconds; 0 means no-time to wait
+MAX_ITEMS_DEBUG = 25  # the web scrap ends when this limit is exceeded (debugging purposes only)
+
 items = list()
 
 
 def show_buildwith_info() -> None:
-    print(f"\n>> buildwith info\n{builtwith.parse(base_url)}")
+    print(f'\n>> buildwith info\n{builtwith.parse(BASE_URL)}')
 
 
 def show_whois_info() -> None:
-    print(f"\n>> whois info\n{whois(base_url)}")
+    print(f'\n>> whois info\n{whois(BASE_URL)}')
 
 
 def get_soap(url) -> BeautifulSoup:
     url = url[:-1] if url[-1] == '/' else url
-    page = requests.get(url + language)
+    headers = {'User-Agent': USER_AGENT}
+    page = requests.get(url + LANGUAGE, headers=headers)
     soup = BeautifulSoup(page.content, features='html.parser')
     return soup
 
@@ -30,7 +44,7 @@ def traverse_communities(url: str, items: list) -> list:
     for community_raw in communities_raw:
         community = dict()
         community['name'] = community_raw.a.string
-        community['url'] = base_url + community_raw.a.get('href')
+        community['url'] = BASE_URL + community_raw.a.get('href')
         traverse_subcommunities(community, items)
     return communities
 
@@ -41,9 +55,8 @@ def traverse_subcommunities(community: dict, items: list) -> list:
     if len(subcommunities_raw) > 0:
         for subcommunity_raw in subcommunities_raw:
             subcommunity = dict()
-
             name = subcommunity_raw.a.string
-            url = base_url + subcommunity_raw.a.get('href')
+            url = BASE_URL + subcommunity_raw.a.get('href')
             subcommunity['url'] = url
 
             if name is not None:
@@ -55,18 +68,23 @@ def traverse_subcommunities(community: dict, items: list) -> list:
 
             traverse_subcommunities(subcommunity, items)
     else:
-        get_items(community)
+        items.extend(get_items(community))
+        if get_item.counter >= MAX_ITEMS_DEBUG:
+            print('\n>> end point debug')
+            exit(0)
 
 
 def get_items(community: dict) -> list:
     soup = get_soap(community['url'])
-    items = list()
     table = soup.find('table', class_='table')
+    result = list()
     if table is not None:
         urls_raw = table.find_all('a')
         for url in urls_raw:
             if 'handle' in url.get('href'):
-                items.append(get_item(base_url + url.get('href')))
+                time.sleep(WAITING_TIME_BEFORE_ITEM_SCRAP)
+                result.append(get_item(BASE_URL + url.get('href')))
+    return result
 
 
 def get_item(url: str) -> dict:
@@ -103,7 +121,7 @@ def get_item(url: str) -> dict:
     # Item stats
     # ToDo: implementar al get_item_statistics l'obtenció d'estadístiques de l'item
     item_stats_raw = soup.find('a', class_='statisticsLink btn btn-info')
-    stats_url = base_url + item_stats_raw.get('href')
+    stats_url = BASE_URL + item_stats_raw.get('href')
     item['statistics'] = get_item_statistics(stats_url)
 
     get_item.counter += 1
@@ -130,4 +148,4 @@ def get_item_statistics(url: str) -> list:
 show_buildwith_info()
 show_whois_info()
 get_item.counter = 0
-traverse_communities(base_url, items)
+traverse_communities(BASE_URL, items)
