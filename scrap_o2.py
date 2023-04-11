@@ -7,16 +7,21 @@ base_url = 'https://openaccess.uoc.edu'
 language = '?locale=ca'  # There are only 3 language options: ca, es, en
 items = list()
 
+
 def show_buildwith_info() -> None:
     print(f"\n>> buildwith info\n{builtwith.parse(base_url)}")
 
+
 def show_whois_info() -> None:
     print(f"\n>> whois info\n{whois(base_url)}")
+
+
 def get_soap(url) -> BeautifulSoup:
     url = url[:-1] if url[-1] == '/' else url
     page = requests.get(url + language)
     soup = BeautifulSoup(page.content, features='html.parser')
     return soup
+
 
 def traverse_communities(url: str, items: list) -> list:
     soup = get_soap(url)
@@ -63,6 +68,7 @@ def get_items(community: dict) -> list:
             if 'handle' in url.get('href'):
                 items.append(get_item(base_url + url.get('href')))
 
+
 def get_item(url: str) -> dict:
     soup = get_soap(url)
 
@@ -104,6 +110,7 @@ def get_item(url: str) -> dict:
     print(f'\n>> item {get_item.counter}\n{item}')
     return item
 
+
 def get_item_statistics(url: str) -> list:
     soup = get_soap(url)
     containers_raw = soup.find_all('div', class_='container')
@@ -115,7 +122,7 @@ def get_item_statistics(url: str) -> list:
             continue
         table_titles.pop(0)
 
-        #ToDo: implementar l'obtenció d'estadístiques de l'item
+        # ToDo: implementar l'obtenció d'estadístiques de l'item
 
     return item_statistics
 
