@@ -3,8 +3,8 @@ from whois import whois
 import requests
 from bs4 import BeautifulSoup, NavigableString, Tag
 import time
-import re
-
+import csv
+import os
 
 '''
 URLs d'interès del repositori O2 de la UOC:
@@ -14,12 +14,13 @@ URLs d'interès del repositori O2 de la UOC:
 '''
 
 BASE_URL = 'https://openaccess.uoc.edu'
-LANGUAGE = '?locale=ca'  # there are only 3 language options: ca, es, en
+LANGUAGE = '?locale=ca'  # There are only 3 language options: ca, es, en
 USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36'
-WAITING_TIME_BEFORE_ITEM_SCRAP = 0  # in seconds; 0 means no-time to wait
-MAX_ITEMS_DEBUG = 25  # the web scrap ends when this limit is exceeded (debugging purposes only)
-
-items = list()
+WAITING_TIME_BEFORE_ITEM_SCRAP = 0  # Time in seconds; the 0 value means no-time to wait
+MAX_ITEMS_DEBUG = 10  # The web scrap ends when this limit is exceeded (debugging purposes only);
+                      # the -1 value means no limit defined: all items will be scraped
+CSV_FILE = f'{os.getcwd()}/uoc_o2_items.csv'
+CSV_ENCODING = 'utf-8'
 
 
 def show_buildwith_info() -> None:
@@ -74,8 +75,9 @@ def traverse_subcommunities(community: dict, hierarchy: list, items: list) -> li
             hierarchy.pop()
     else:
         items.extend(get_items(community, hierarchy))
-        if get_item.counter >= MAX_ITEMS_DEBUG:
+        if MAX_ITEMS_DEBUG != -1 and get_item.counter >= MAX_ITEMS_DEBUG:
             print('\n>> end point debug')
+            items_to_csv(items, CSV_FILE)
             exit(0)
 
 
@@ -157,7 +159,21 @@ def get_item_statistics(url: str) -> list:
     return item_statistics
 
 
+def items_to_csv(items: list, filename: str) -> None:
+    keys = list()
+    for item in items:
+        for k in item.keys():
+            if k not in keys:
+                keys.append(k)
+    with open(filename, 'w', newline='', encoding=CSV_ENCODING) as output_file:
+        dict_writer = csv.DictWriter(output_file, keys)
+        dict_writer.writeheader()
+        dict_writer.writerows(items)
+
+
+items = list()
 show_buildwith_info()
 show_whois_info()
 get_item.counter = 0
 traverse_communities(BASE_URL, items)
+items_to_csv(items, CSV_FILE)
