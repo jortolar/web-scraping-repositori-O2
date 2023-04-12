@@ -1,8 +1,9 @@
 import builtwith
 from whois import whois
 import requests
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, NavigableString, Tag
 import time
+import re
 
 
 '''
@@ -116,9 +117,14 @@ def get_item(url: str, hierarchy: list) -> dict:
             subjects = list()
             data_raw = soup.find('td', class_=f'metadataFieldValue {attribute}')
             for subject_raw in data_raw:
-                # skip <br/> tags
-                if subject_raw.text != '':
-                    subjects.append(subject_raw.text)
+                # skip <br/> <br> <br/> tags
+                if isinstance(subject_raw, NavigableString):
+                    if subject_raw.text != '':
+                        subjects.append(subject_raw.text)
+                elif isinstance(subject_raw, Tag):
+                    for content in subject_raw.contents:
+                        if content.text != '':
+                            subjects.append(content.text)
             item[attribute] = subjects
         else:
             item[attribute] = soup.find('td', class_=f'metadataFieldValue {attribute}').text
