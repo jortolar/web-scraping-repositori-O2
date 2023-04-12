@@ -45,11 +45,13 @@ def traverse_communities(url: str, items: list) -> list:
         community = dict()
         community['name'] = community_raw.a.string
         community['url'] = BASE_URL + community_raw.a.get('href')
-        traverse_subcommunities(community, items)
+        hierarchy = list()
+        hierarchy.append(community)
+        traverse_subcommunities(community, hierarchy, items)
     return communities
 
 
-def traverse_subcommunities(community: dict, items: list) -> list:
+def traverse_subcommunities(community: dict, hierarchy: list, items: list) -> list:
     soup = get_soap(community['url'])
     subcommunities_raw = soup.find_all('h4', class_='list-group-item-heading')
     if len(subcommunities_raw) > 0:
@@ -66,15 +68,17 @@ def traverse_subcommunities(community: dict, items: list) -> list:
                 # Collection
                 subcommunity['name'] = subcommunity_raw.a.span.text
 
-            traverse_subcommunities(subcommunity, items)
+            hierarchy.append(subcommunity)
+            traverse_subcommunities(subcommunity, hierarchy, items)
+            hierarchy.pop()
     else:
-        items.extend(get_items(community))
+        items.extend(get_items(community, hierarchy))
         if get_item.counter >= MAX_ITEMS_DEBUG:
             print('\n>> end point debug')
             exit(0)
 
 
-def get_items(community: dict) -> list:
+def get_items(community: dict, hierarchy: list) -> list:
     soup = get_soap(community['url'])
     table = soup.find('table', class_='table')
     result = list()
@@ -84,11 +88,11 @@ def get_items(community: dict) -> list:
             item_url = BASE_URL + url_raw.get('href')
             if 'handle' in item_url:
                 time.sleep(WAITING_TIME_BEFORE_ITEM_SCRAP)
-                result.append(get_item(item_url))
+                result.append(get_item(item_url, hierarchy))
     return result
 
 
-def get_item(url: str) -> dict:
+def get_item(url: str, hierarchy: list) -> dict:
     soup = get_soap(url)
 
     # Item info
@@ -118,6 +122,7 @@ def get_item(url: str) -> dict:
             item[attribute] = subjects
         else:
             item[attribute] = soup.find('td', class_=f'metadataFieldValue {attribute}').text
+    item['community_hierarchy'] = hierarchy
 
     # Item stats
     # ToDo: implementar al get_item_statistics l'obtenció d'estadístiques de l'item
