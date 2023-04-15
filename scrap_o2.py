@@ -5,6 +5,8 @@ from bs4 import BeautifulSoup, NavigableString, Tag
 import time
 import csv
 import os
+from unidecode import unidecode
+import re
 
 '''
 URLs d'interès del repositori O2 de la UOC:
@@ -17,7 +19,7 @@ BASE_URL = 'https://openaccess.uoc.edu'
 LANGUAGE = '?locale=ca'  # There are only 3 language options: ca, es, en
 USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36'
 WAITING_TIME_BEFORE_ITEM_SCRAP = 0  # Time in seconds; the 0 value means no-time to wait
-MAX_ITEMS_DEBUG = 10  # The web scrap ends when this limit is exceeded (debugging purposes only);
+MAX_ITEMS_DEBUG = 1  # The web scrap ends when this limit is exceeded (debugging purposes only);
                       # the -1 value means no limit defined: all items will be scraped
 CSV_FILE = f'{os.getcwd()}/uoc_o2_items.csv'
 CSV_ENCODING = 'utf-8'
@@ -56,12 +58,12 @@ def traverse_communities(url: str, items: list) -> list:
 def traverse_subcommunities(community: dict, hierarchy: list, items: list) -> list:
     soup = get_soap(community['url'])
     subcommunities_raw = soup.find_all('h4', class_='list-group-item-heading')
+
     if len(subcommunities_raw) > 0:
         for subcommunity_raw in subcommunities_raw:
             subcommunity = dict()
             name = subcommunity_raw.a.string
             url = BASE_URL + subcommunity_raw.a.get('href')
-            subcommunity['url'] = url
 
             if name is not None:
                 # Subcommunity
@@ -70,6 +72,8 @@ def traverse_subcommunities(community: dict, hierarchy: list, items: list) -> li
                 # Collection
                 subcommunity['name'] = subcommunity_raw.a.span.text
 
+            subcommunity['url'] = url
+            
             hierarchy.append(subcommunity)
             traverse_subcommunities(subcommunity, hierarchy, items)
             hierarchy.pop()
@@ -133,30 +137,92 @@ def get_item(url: str, hierarchy: list) -> dict:
     item['community_hierarchy'] = hierarchy
 
     # Item stats
-    # ToDo: implementar al get_item_statistics l'obtenció d'estadístiques de l'item
     item_stats_raw = soup.find('a', class_='statisticsLink btn btn-info')
     item_stats_url = BASE_URL + item_stats_raw.get('href')
-    item['statistics'] = get_item_statistics(item_stats_url)
+    add_item_statistics(item_stats_url,item)
 
     get_item.counter += 1
     print(f'\n>> item {get_item.counter}\n{item}')
     return item
 
 
-def get_item_statistics(url: str) -> list:
+#Recupera les estadístiques i les afegeix a l'item
+def add_item_statistics(url: str, item: dict) -> list:
     soup = get_soap(url)
-    containers_raw = soup.find_all('div', class_='container')
-    item_statistics = list()
-    for container_raw in containers_raw:
-        table_titles = container_raw.find_all('h4')
-        table_contents = container_raw.find_all('table', class_='statsTable')
-        if len(table_titles) == 0 or len(table_contents) == 0:
-            continue
-        table_titles.pop(0)
+    
+    stat_attributes_raw = soup.find_all("h4")
+    stat_attributes = list()
+    
+    for i in range (1, len(stat_attributes_raw)) :
+        if (i != 3):
+            stat_attributes.append(unidecode("statistics_"+stat_attributes_raw[i].text.replace(' ', '_')).lower())
 
-        # ToDo: implementar l'obtenció d'estadístiques de l'item
+    stat_table_contents_raw = soup.find_all('table', class_='statsTable')
 
-    return item_statistics
+    for j in range (0, len(stat_table_contents_raw)) :
+
+         # nombre_total_de_visites
+        if (j == 0):
+           item[stat_attributes[j]] =  re.sub(r'[^0-9]', '', stat_table_contents_raw[j].text)
+
+         # nombre_total_de_visites_mensuals
+        elif (j == 1):
+            value = list()
+            attr = list()
+            monthly_visits = dict()
+
+            # recorrem la taula navegant dins del seus elements
+            rows = stat_table_contents_raw[j].find_all("tr")
+
+            for row in rows:
+                headers = row.find_all("th")
+                for header in headers:
+                    attr.append(header.text.replace('\n', ''))
+
+                cells = row.find_all("td")
+                for cell in cells:
+                    value.append(cell.text.replace('\n', ''))
+
+            for h in range(1, len(attr)):
+                monthly_visits[attr[h]] = value[h]            
+
+            item[stat_attributes[j]] = monthly_visits
+            
+        #ranquing_de_visites_per_pais 
+        #ranquing_de_visites_per_ciutat   
+        elif (j == 3) or (j == 4): 
+            item[stat_attributes[j-1]] = get_item_visits_statistics(stat_table_contents_raw[j])  
+
+    return item
+
+#Navegació per una taula tipus, retorna un diccionari {clau:valor}
+'''
+<table>
+    <tr>
+        <td>clau</td>
+        <td>valor</td>
+    </tr>
+</table>
+'''
+def get_item_visits_statistics(resulset: any) -> dict:
+    value = list()
+    attr = list()
+    r_value = dict()
+    
+    rows = resulset.find_all("tr")
+
+    for row in rows:
+        cells = row.find_all("td")
+        for i in range(0, len(cells)):
+            if (i % 2 == 0):
+                attr.append(unidecode(re.sub(r'[0-9\n]+', '', cells[i].text).replace(' ', '_')).lower())
+            else:
+                value.append(re.sub(r'[^0-9]', '', cells[i].text))
+
+    for h in range(0, len(attr)):
+        r_value[attr[h]] = value[h]            
+
+    return r_value
 
 
 def items_to_csv(items: list, filename: str) -> None:
@@ -177,3 +243,4 @@ show_whois_info()
 get_item.counter = 0
 traverse_communities(BASE_URL, items)
 items_to_csv(items, CSV_FILE)
+
