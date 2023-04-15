@@ -11,7 +11,7 @@ L'objectiu d'aquesta activitat serà la creació d'un dataset a partir de les da
 ### Arxius del repositori
 
 
-## 10.- DOI Dataset
+### DOI Dataset
 
 DOI: 
 Zenodo. 
