@@ -22,11 +22,11 @@ Zenodo.
     <th>Firmes</th>
   </tr>
   <tr>
-    <td>Investigació previa</td>
+    <td>Investigació prèvia</td>
     <td>Jordi Blasco Planesas, Jordi Ortolà Rangel</td>
   </tr>
   <tr>
-    <td>Redacció de les respuestes</td>
+    <td>Redacció de les respostes</td>
     <td>Jordi Blasco Planesas, Jordi Ortolà Rangel</td>
   </tr>
   <tr>
