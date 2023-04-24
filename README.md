@@ -14,15 +14,7 @@ L'objectiu d'aquesta activitat serà la creació d'un dataset a partir de les da
 
 ### DOI Dataset
 
-DOI: cff-version: 1.1.0
-message: "If you use this software, please cite it as below."
-authors:
-  - family-names: Joe
-    given-names: Johnson
-    orcid: https://orcid.org/0000-0000-0000-0000
-title: jortolar/web-scraping-repositori-O2: v1.1
-version: v1.1
-date-released: 2023-04-24
+[![DOI](https://zenodo.org/badge/624015869.svg)](https://zenodo.org/badge/latestdoi/624015869)
 
 
 <table>
